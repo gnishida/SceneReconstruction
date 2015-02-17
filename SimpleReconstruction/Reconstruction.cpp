@@ -145,88 +145,37 @@ void Reconstruction::computeProjectionMat(Matx33d E, Mat_<double>& R1, Mat_<doub
 	T2 = -svd.u.col(2);
 }
 
-double Reconstruction::unprojectPoints(const Mat_<double>& K, const Mat_<double>& R1, const Mat_<double>& T1, const Mat_<double>& R2, const Mat_<double>& T2, const std::vector<cv::Point2f>& pts1, const std::vector<cv::Point2f>& pts2, std::vector<cv::Point3d>& pts3d, Mat_<double>& P1, Mat_<double>& P2) {
-	cv::Mat_<double> Kinv = K.inv();
-
-	double error = 0.0;
-
-	P1 = (Mat_<double>(3, 4) << 1, 0, 0, 0, 
-							  0, 1, 0, 0,
-							  0, 0, 1, 0);
-
-	std::cout << P1 << std::endl;
-
-	// 第1候補のチェック
-	P2 = (Mat_<double>(3, 4) << R1(0, 0), R1(0, 1), R1(0, 2), T1(0, 0),
-				 				R1(1, 0), R1(1, 1), R1(1, 2), T1(1, 0),
-								R1(2, 0), R1(2, 1), R1(2, 2), T1(2, 0));	
-	std::cout << P2 << std::endl;
-	if (unprojectPoints(K, Kinv, P1, P2, pts1, pts2, pts3d, error)) return error;
-
-	// 第2候補のチェック
-	P2 = (Mat_<double>(3, 4) << R1(0, 0), R1(0, 1), R1(0, 2), T2(0, 0),
-        						R1(1, 0), R1(1, 1), R1(1, 2), T2(1, 0),
-								R1(2, 0), R1(2, 1), R1(2, 2), T2(2, 0));
-	if (unprojectPoints(K, Kinv, P1, P2, pts1, pts2, pts3d, error)) return error;
-
-	// 第3候補のチェック
-	P2 = (Mat_<double>(3, 4) << R2(0, 0), R2(0, 1), R2(0, 2), T1(0, 0),
-								R2(1, 0), R2(1, 1), R2(1, 2), T1(1, 0),
-								R2(2, 0), R2(2, 1), R2(2, 2), T1(2, 0));
-	if (unprojectPoints(K, Kinv, P1, P2, pts1, pts2, pts3d, error)) return error;
-
-	// 第4候補のチェック
-	P2 = (Mat_<double>(3, 4) << R2(0, 0), R2(0, 1), R2(0, 2), T2(0, 0),
-								R2(1, 0), R2(1, 1), R2(1, 2), T2(1, 0),
-								R2(2, 0), R2(2, 1), R2(2, 2), T2(2, 0));
-	if (unprojectPoints(K, Kinv, P1, P2, pts1, pts2, pts3d, error)) return error;
-
-	return error;
-}
-
-bool Reconstruction::unprojectPoints(const Mat_<double>& K, const Mat_<double>& Kinv, const Mat_<double>& P, const Mat_<double>& P1, const std::vector<cv::Point2f>& pts1, const std::vector<cv::Point2f>& pts2, std::vector<cv::Point3d>& pts3d, double& error) {
+double Reconstruction::unprojectPoints(const Mat_<double>& P1, const Mat_<double>& P2, const std::vector<cv::Point2f>& pts1, const std::vector<cv::Point2f>& pts2, std::vector<cv::Point3d>& pts3d) {
 	pts3d.clear();
 	std::vector<double> errors;
 
 	int numFront = 0;
 
 	for (int i = 0; i < pts1.size(); ++i) {
-		Point3d u(pts1[i].x, pts1[i].y, 1.0);
-		Mat_<double> um = Kinv * Mat_<double>(u);
-		u.x = um(0); u.y = um(1); u.z = um(2);
+		Point3d u1(pts1[i].x, pts1[i].y, 1.0);
 		
-		Point3d u1(pts2[i].x, pts2[i].y, 1.0);
-		Mat_<double> um1 = Kinv * Mat_<double>(u1);
-		u1.x = um1(0); u1.y = um1(1); u1.z = um1(2);
+		Point3d u2(pts2[i].x, pts2[i].y, 1.0);
 
-		Mat_<double> X = iterativeTriangulation(u, P, u1, P1);
+		Mat_<double> X = iterativeTriangulation(u1, P1, u2, P2);
 
 		std::cout << "X:\n" << X << std::endl;
 		cv::Point3d p = cv::Point3d(X(0), X(1), X(2));
 		pts3d.push_back(p);
 		
 		// reprojection errorを計算する
-		cv::Mat_<double> pt1_3d_hat = K * Mat_<double>(P) * Mat_<double>(X);
+		cv::Mat_<double> pt1_3d_hat = Mat_<double>(P1) * Mat_<double>(X);
 		Point2f pt1_hat(pt1_3d_hat(0, 0) / pt1_3d_hat(2, 0), pt1_3d_hat(1, 0) / pt1_3d_hat(2, 0));
 		std::cout << "projected point1: " << pt1_hat << " (observed: " << pts1[i] << ") E=" << norm(pt1_hat - pts1[i]) << std::endl;
 		errors.push_back(norm(pt1_hat - pts1[i]));
 
-		cv::Mat_<double> pt2_3d_hat = K * Mat_<double>(P1) * Mat_<double>(X);
+		cv::Mat_<double> pt2_3d_hat = Mat_<double>(P2) * Mat_<double>(X);
 		Point2f pt2_hat(pt2_3d_hat(0, 0) / pt2_3d_hat(2, 0), pt2_3d_hat(1, 0) / pt2_3d_hat(2, 0));
 		std::cout << "projected point2: " << pt2_hat << " (observed: " << pts2[i] << ") E=" << norm(pt2_hat - pts1[i]) << std::endl;
 		errors.push_back(norm(pt2_hat - pts1[i]));
 
-		Mat_<double> x1 = P * X;
-		Mat_<double> x2 = P1 * X;
-		if (x1(2, 0) > 0 && x2(2, 0) > 0) {
-			numFront++;
-		}
 	}
 
-	error = mean(errors)[0];
-
-	if (numFront > (float)pts1.size() * 0.75f) return true;
-	else return false;
+	return mean(errors)[0];
 }
 
 Mat_<double> Reconstruction::triangulate(const Point3d& u, const Mat_<double>& P, const Point3d& u1, const Mat_<double>& P1) {
@@ -323,6 +272,66 @@ bool Reconstruction::decomposeEtoRandT(const Mat_<double>& E, Mat_<double>& R1, 
 	t2 = -svd.u.col(2); //u3
 
 	return true;
+}
+
+void Reconstruction::calibrateCamera(std::vector<Mat>& img, Mat_<double>& K, Mat_<double> distCoeffs, std::vector<Mat>& P) {
+	K = Mat_<double>::eye(3, 3);
+	distCoeffs = Mat_<double>::zeros(1, 8);
+	std::vector<Mat> rvecs;
+	std::vector<Mat> tvecs;
+
+	std::vector<std::vector<cv::Point3f> > objectPoints;
+	objectPoints.resize(img.size());
+
+	std::vector<std::vector<cv::Point2f> > pts;
+	pts.resize(img.size());
+
+	for (int i = 0; i < img.size(); ++i) {
+		// ３Ｄ座標のセット
+		for (int r = 0; r < 7; ++r) {
+			for (int c = 0; c < 10; ++c) {
+				objectPoints[i].push_back(cv::Point3f(c * 21.7, (6-r) * 21.7, 0.0f));
+			}
+		}
+
+		// コーナー検出
+		if (cv::findChessboardCorners(img[i], cv::Size(10, 7), pts[i])) {
+			fprintf (stderr, "ok\n");
+		} else {
+			fprintf (stderr, "fail\n");
+		}
+
+		// サブピクセル精度のコーナー検出
+		cv::Mat grayMat(img[i].size(), CV_8UC1);
+		cv::cvtColor(img[i], grayMat, CV_RGB2GRAY);
+		cv::cornerSubPix(grayMat, pts[i], cv::Size(3, 3), cv::Size(-1, -1), cv::TermCriteria(CV_TERMCRIT_ITER | CV_TERMCRIT_EPS, 20, 0.03));
+
+		// ファイルに保存する
+		char filename[256];
+		sprintf(filename, "corners%d.jpg", i);
+		Mat temp_img = img[i].clone();
+		for (int k = 0; k < pts[i].size(); ++k) {
+			circle(temp_img, Point(pts[i][k].x, pts[i][k].y), 5, Scalar(255, 255, 255), 2);
+		}
+		imwrite(filename, temp_img);
+
+		// Y座標を上下反転させる
+		for (int j = 0; j < pts[i].size(); ++j) {
+			pts[i][j].y = img[i].rows - pts[i][j].y;
+		}
+	}
+
+	cv::calibrateCamera(objectPoints, pts, img[0].size(), K, distCoeffs, rvecs, tvecs, CV_CALIB_ZERO_TANGENT_DIST | CV_CALIB_FIX_K2 | CV_CALIB_FIX_K3 | CV_CALIB_FIX_K4 | CV_CALIB_FIX_K5 | CV_CALIB_FIX_K6);
+
+	P.resize(img.size());
+	for (int i = 0; i < img.size(); ++i) {
+		Mat_<double> R;
+		Rodrigues(rvecs[i], R);
+
+		P[i] = (Mat_<double>(3, 4) << R(0, 0), R(0, 1), R(0, 2), tvecs[i].at<double>(0, 0),
+									  R(1, 0), R(1, 1), R(1, 2), tvecs[i].at<double>(1, 0),
+									  R(2, 0), R(2, 1), R(2, 2), tvecs[i].at<double>(2, 0));
+	}
 }
 
 void Reconstruction::bundleAdjustment(Mat_<double>& F, Mat_<double>& P1, Mat_<double>& P2, Mat_<double>& K, Point2f& pt1, Point2f& pt2, Point3d& pt3d) {

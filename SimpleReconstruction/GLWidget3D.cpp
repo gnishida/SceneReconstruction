@@ -72,6 +72,12 @@ void GLWidget3D::initializeGL()
 
 	static GLfloat lightPosition[4] = {0.0f, 0.0f, 100.0f, 0.0f};
 	glLightfv(GL_LIGHT0, GL_POSITION, lightPosition);
+
+	QImage img;
+	img.load("checkerboard.jpg");
+	texCheckerBoard = bindTexture(QImage("checkerboard.jpg"));
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 }
 
 /**
@@ -124,6 +130,28 @@ void GLWidget3D::drawScene() {
 	glVertex3f(0, 0, 0);
 	glVertex3f(0, 0, 500);
 	glEnd();
+
+	// チェックボードの表示
+	glEnable(GL_TEXTURE_2D);
+	glBindTexture(GL_TEXTURE_2D, texCheckerBoard);
+	glBegin(GL_QUADS);
+	glColor3f(1, 1, 1);
+	glNormal3f(0, 0, 1);
+
+	glTexCoord2f(0, 0);
+	glVertex3f(-21.7, -21.7, 0);
+
+	glTexCoord2f(1, 0);
+	glVertex3f(217, -21.7, 0);
+
+	glTexCoord2f(1, 1);
+	glVertex3f(217, 21.7*7, 0);
+
+	glTexCoord2f(0, 1);
+	glVertex3f(-21.7, 21.7*7, 0);
+
+	glEnd();
+	glDisable(GL_TEXTURE_2D);
 
 	if (pts3d.size() > 0) {
 		// 左側のボックスを描画
@@ -295,6 +323,21 @@ GLuint GLWidget3D::generateTexture(int index1, int index2, int index3, std::vect
 		flip(img[0], warped_img, 0);
 		warpAffine(warped_img, warped_img, affine, img[0].size());
 
+
+
+
+		cv::line(warped_img, Point(dst[0].x, dst[0].y), Point(dst[1].x, dst[1].y), Scalar(255, 255, 255), 2);
+		cv::line(warped_img, Point(dst[0].x, dst[0].y), Point(dst[2].x, dst[2].y), Scalar(255, 255, 255), 2);
+		cv::line(warped_img, Point(dst[1].x, dst[1].y), Point(dst[2].x, dst[2].y), Scalar(255, 255, 255), 2);
+		flip(warped_img, warped_img, 0);
+		char filename[256];
+		sprintf(filename, "warped_img%s.jpg", str.toUtf8().data());
+		imwrite(filename, warped_img);
+
+
+
+
+
 		// テクスチャを作成する
 		GLuint texture;
 		glGenTextures(1, &texture);
@@ -380,11 +423,15 @@ void GLWidget3D::reconstruct() {
 	img[0] = imread("images/image1.jpg");
 	img[1] = imread("images/image2.jpg");
 
-	Mat_<double> K;
-	cv::FileStorage fs;
-	fs.open("camera_calibration.yml", cv::FileStorage::READ);
-	fs["camera_matrix"] >> K;
-	std::cout << "K:\n" << K << std::endl;
+	Mat_<double> K = Mat_<double>::eye(3, 3);
+	Mat_<double> distCoeffs = Mat_<double>::zeros(1, 8);
+	std::vector<Mat> P;
+	Reconstruction reconstruction;
+	reconstruction.calibrateCamera(img, K, distCoeffs, P);
+
+	std::cout << K << std::endl;
+	std::cout << P[0] << std::endl;
+	std::cout << P[1] << std::endl;
 
 	// 対応点をファイルから読み込む
 	pts.resize(2);
@@ -410,45 +457,17 @@ void GLWidget3D::reconstruct() {
 		}
 	}
 
-	// Fundamental Matrixを計算する
-	Reconstruction reconstruction;
-	std::vector<uchar> status;
-	cv::Mat_<double> F = reconstruction.findFundamentalMat(pts[0], pts[1], status);
-
-	// Fに基づき、2D座標を修正する
-	reconstruction.sampson(F, pts[0], pts[1]);
-	//correctMatches(F, pts[0], pts[1], pts[0], pts[1]);
-
-	reconstruction.writeEpipolarLines("epipolar1.jpg", img[0], pts[0], F, pts[1], 2);
-	reconstruction.writeEpipolarLines("epipolar2.jpg", img[1], pts[1], F, pts[0], 1);
-
-	// Essential Matrixを計算する
-	cv::Mat_<double> E = K.t() * F * K;
-
-	std::cout << "E:" << E << std::endl;
-	std::cout << "det(E) should be less than 1e-07." << std::endl;
-	std::cout << "det(E): " << cv::determinant(E) << std::endl;
-
-	// R、Tを計算する
-	Mat_<double> R1, R2, T1, T2;
-	reconstruction.decomposeEtoRandT(E, R1, R2, T1, T2);
-
-	if (determinant(R1) + 1.0 < 1e-09) {
-		//according to http://en.wikipedia.org/wiki/Essential_matrix#Showing_that_it_is_valid
-		// flip E's sign if det(R) == -1 instead of 1.
-		E = -E;
-		reconstruction.decomposeEtoRandT(E, R1, R2, T1, T2);
-	}
-
 	// triangulationにより3D座標を計算する
-	Mat_<double> P1, P2;
-	double avg_error = reconstruction.unprojectPoints(K, R1, T1, R2, T2, pts[0], pts[1], pts3d, P1, P2);
+	double avg_error = reconstruction.unprojectPoints(K * P[0], K * P[1], pts[0], pts[1], pts3d);
 	printf("avg error after reprojection: %lf\n", avg_error);
 
+	/*
 	for (int i = 0; i < pts3d.size(); ++i) {
 		reconstruction.bundleAdjustment(F, P1, P2, K, pts[0][i], pts[1][i], pts3d[i]);
 	}
+	*/
 
+	/*
 	// compute bounding box
 	double min_x = std::numeric_limits<float>::max();
 	double min_y = std::numeric_limits<float>::max();
@@ -471,8 +490,9 @@ void GLWidget3D::reconstruct() {
 		pts3d[i].y -= (min_y + max_y) * 0.5;
 		pts3d[i].z -= (min_z + max_z) * 0.5;
 	}
+	*/
 
-	float scale_factor = 1000.0f;
+	float scale_factor = 1;//000.0f;
 	for (int i = 0; i < pts3d.size(); ++i) {
 		pts3d[i].x *= scale_factor;
 		pts3d[i].y *= scale_factor;
@@ -485,41 +505,9 @@ void GLWidget3D::reconstruct() {
 void GLWidget3D::calibrateCamera(std::vector<cv::Mat>& img) {
 	Mat_<double> K = Mat_<double>::eye(3, 3);
 	Mat_<double> distCoeffs = Mat_<double>::zeros(1, 8);
-	std::vector<Mat> rvecs;
-	std::vector<Mat> tvecs;
-
-	std::vector<std::vector<cv::Point3f> > objectPoints;
-	objectPoints.resize(img.size());
-
-	std::vector<std::vector<cv::Point2f> > pts;
-	pts.resize(img.size());
-
-	for (int i = 0; i < img.size(); ++i) {
-		// ３Ｄ座標のセット
-		for (int r = 0; r < 7; ++r) {
-			for (int c = 0; c < 10; ++c) {
-				objectPoints[i].push_back(cv::Point3f(c * 21.7, (6-r) * 21.7, 0.0f));
-			}
-		}
-
-		// コーナー検出
-		if (cv::findChessboardCorners(img[i], cv::Size(10, 7), pts[i])) {
-			fprintf (stderr, "ok\n");
-		} else {
-			fprintf (stderr, "fail\n");
-		}
-
-		// サブピクセル精度のコーナー検出
-		cv::Mat grayMat(img[i].size(), CV_8UC1);
-		cv::cvtColor(img[i], grayMat, CV_RGB2GRAY);
-		cv::cornerSubPix(grayMat, pts[i], cv::Size(3, 3), cv::Size(-1, -1), cv::TermCriteria(CV_TERMCRIT_ITER | CV_TERMCRIT_EPS, 20, 0.03));
-
-		for (int j = 0; j < pts[i].size(); ++j) {
-			pts[i][j].y = img[i].rows - pts[i][j].y;
-		}
-	}
-
-	cv::calibrateCamera(objectPoints, pts, img[0].size(), K, distCoeffs, rvecs, tvecs, CV_CALIB_ZERO_TANGENT_DIST | CV_CALIB_FIX_K2 | CV_CALIB_FIX_K3 | CV_CALIB_FIX_K4 | CV_CALIB_FIX_K5 | CV_CALIB_FIX_K6);
+	std::vector<Mat> P;
+	Reconstruction reconstruction;
+	reconstruction.calibrateCamera(img, K, distCoeffs, P);
 
 	cv::FileStorage fs;
 	fs.open("camera_calibration.yml", cv::FileStorage::WRITE);

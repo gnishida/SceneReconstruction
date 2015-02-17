@@ -20,6 +20,7 @@ private:
 	Camera camera;
 	QPoint lastPos;
 
+	GLuint texCheckerBoard;
 	std::vector<cv::Mat> img;
 	cv::Mat P[2];
 	std::vector<std::vector<cv::Point2f> > pts;
