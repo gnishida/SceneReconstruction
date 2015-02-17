@@ -154,6 +154,7 @@ void GLWidget3D::drawScene() {
 	glDisable(GL_TEXTURE_2D);
 
 	if (pts3d.size() > 0) {
+		/*
 		// 左側のボックスを描画
 		drawTriangle(0, 1, 2);
 		drawTriangle(0, 2, 3);
@@ -177,8 +178,8 @@ void GLWidget3D::drawScene() {
 		drawTriangle(20, 15, 21);
 		drawTriangle(15, 14, 22);
 		drawTriangle(15, 22, 21);
-
-		/*
+		*/
+		
 		Subdiv2D subdiv(Rect(0, 0, 3000, 3000));
 		for (int i = 0; i < pts3d.size(); ++i) {
 			subdiv.insert(Point2f(pts[0][i].x, pts[0][i].y));
@@ -199,7 +200,7 @@ void GLWidget3D::drawScene() {
 			}
 		}
 		glEnd();
-		*/
+		
 	}
 }
 
