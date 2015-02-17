@@ -1,0 +1,19 @@
+language: c
+compiler:
+  - gcc
+  - clang
+before_install:
+  - sudo apt-get install gfortran libblas-dev liblapack-dev libilmbase-dev
+  - sudo pip install cpp-coveralls
+
+script:
+  - make double float lapack fortran half
+  - make check
+  - make -C examples checklapack LDADD_L='-llapack -lblas'
+  - make veryclean
+  - make -k -C examples test ctest testdrv ctestdrv CFLAGS='-g -fprofile-arcs -ftest-coverage -Wall -Wextra -Werror' FFLAGS='-g -fprofile-arcs -ftest-coverage'
+  - make fortran FFLAGS='-g -fprofile-arcs -ftest-coverage'
+  - make -C examples ftest LIBSUFFIX= MINPACK=../fortran/libminpack.a FFLAGS='-g -fprofile-arcs -ftest-coverage'
+
+after_success:
+  - coveralls --extension .c --extension .f --extension .h --exclude examples
