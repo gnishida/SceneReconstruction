@@ -263,8 +263,9 @@ GLuint GLWidget3D::generateTexture(int index1, int index2, int index3, std::vect
 		// ベクトルa = x_2 - x_1をX軸とし、ベクトルb = x_3 - x_1を仮のY軸とし、
 		// Z軸をc = a x bで求める。
 		// さらに、Y軸をb' = c x aで求める。
-		Mat_<double> a = (Mat_<double>(3, 1) << pts3d[index2].x - pts3d[index1].x, pts3d[index2].y - pts3d[index1].y, pts3d[index2].z - pts3d[index2].z);
-		Mat_<double> b = (Mat_<double>(3, 1) << pts3d[index3].x - pts3d[index1].x, pts3d[index3].y - pts3d[index1].y, pts3d[index3].z - pts3d[index2].z);
+		Mat_<double> a = (Mat_<double>(3, 1) << pts3d[index2].x - pts3d[index1].x, pts3d[index2].y - pts3d[index1].y, pts3d[index2].z - pts3d[index1].z);
+		std::cout << a << std::endl;
+		Mat_<double> b = (Mat_<double>(3, 1) << pts3d[index3].x - pts3d[index1].x, pts3d[index3].y - pts3d[index1].y, pts3d[index3].z - pts3d[index1].z);
 		Mat_<double> c = a.cross(b);
 		b = c.cross(a);
 		normalize(a, a);
@@ -273,8 +274,8 @@ GLuint GLWidget3D::generateTexture(int index1, int index2, int index3, std::vect
 
 		// 元の3D座標系から、上で求めた2D座標系への変換行列を作成する
 		Mat_<double> abc = (Mat_<double>(3, 3) << a(0, 0), b(0, 0), c(0, 0),
-													a(1, 0), b(1, 0), c(1, 0),
-													a(2, 0), b(2, 0), c(2, 0));
+												  a(1, 0), b(1, 0), c(1, 0),
+												  a(2, 0), b(2, 0), c(2, 0));
 		a = abc.inv() * Mat_<double>(pts3d[index2] - pts3d[index1]);
 		b = abc.inv() * Mat_<double>(pts3d[index3] - pts3d[index1]);
 
@@ -322,21 +323,6 @@ GLuint GLWidget3D::generateTexture(int index1, int index2, int index3, std::vect
 		cv::Mat warped_img;
 		flip(img[0], warped_img, 0);
 		warpAffine(warped_img, warped_img, affine, img[0].size());
-
-
-
-
-		cv::line(warped_img, Point(dst[0].x, dst[0].y), Point(dst[1].x, dst[1].y), Scalar(255, 255, 255), 2);
-		cv::line(warped_img, Point(dst[0].x, dst[0].y), Point(dst[2].x, dst[2].y), Scalar(255, 255, 255), 2);
-		cv::line(warped_img, Point(dst[1].x, dst[1].y), Point(dst[2].x, dst[2].y), Scalar(255, 255, 255), 2);
-		flip(warped_img, warped_img, 0);
-		char filename[256];
-		sprintf(filename, "warped_img%s.jpg", str.toUtf8().data());
-		imwrite(filename, warped_img);
-
-
-
-
 
 		// テクスチャを作成する
 		GLuint texture;

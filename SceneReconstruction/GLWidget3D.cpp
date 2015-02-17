@@ -235,8 +235,8 @@ GLuint GLWidget3D::generateTexture(int index1, int index2, int index3, std::vect
 		// ベクトルa = x_2 - x_1をX軸とし、ベクトルb = x_3 - x_1を仮のY軸とし、
 		// Z軸をc = a x bで求める。
 		// さらに、Y軸をb' = c x aで求める。
-		Mat_<double> a = (Mat_<double>(3, 1) << pts3d[index2].x - pts3d[index1].x, pts3d[index2].y - pts3d[index1].y, pts3d[index2].z - pts3d[index2].z);
-		Mat_<double> b = (Mat_<double>(3, 1) << pts3d[index3].x - pts3d[index1].x, pts3d[index3].y - pts3d[index1].y, pts3d[index3].z - pts3d[index2].z);
+		Mat_<double> a = (Mat_<double>(3, 1) << pts3d[index2].x - pts3d[index1].x, pts3d[index2].y - pts3d[index1].y, pts3d[index2].z - pts3d[index1].z);
+		Mat_<double> b = (Mat_<double>(3, 1) << pts3d[index3].x - pts3d[index1].x, pts3d[index3].y - pts3d[index1].y, pts3d[index3].z - pts3d[index1].z);
 		Mat_<double> c = a.cross(b);
 		b = c.cross(a);
 		normalize(a, a);
