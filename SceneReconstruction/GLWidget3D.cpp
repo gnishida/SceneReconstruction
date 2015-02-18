@@ -157,7 +157,6 @@ void GLWidget3D::drawScene() {
 		}
 		std::vector<Vec6f> triangleList;
 		subdiv.getTriangleList(triangleList);
-		glBegin(GL_TRIANGLES);
 		for (int i = 0; i < triangleList.size(); ++i) {
 			int edge = 0;
 			int vertex[3] = {0, 0, 0};
@@ -170,7 +169,6 @@ void GLWidget3D::drawScene() {
 				drawTriangle(vertex[0], vertex[1], vertex[2]);
 			}
 		}
-		glEnd();
 		*/
 	}
 }

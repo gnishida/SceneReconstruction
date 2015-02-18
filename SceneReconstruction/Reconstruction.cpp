@@ -154,13 +154,10 @@ double Reconstruction::unprojectPoints(const Mat_<double>& K, const Mat_<double>
 							  0, 1, 0, 0,
 							  0, 0, 1, 0);
 
-	std::cout << P1 << std::endl;
-
 	// 第1候補のチェック
 	P2 = (Mat_<double>(3, 4) << R1(0, 0), R1(0, 1), R1(0, 2), T1(0, 0),
 				 				R1(1, 0), R1(1, 1), R1(1, 2), T1(1, 0),
-								R1(2, 0), R1(2, 1), R1(2, 2), T1(2, 0));	
-	std::cout << P2 << std::endl;
+								R1(2, 0), R1(2, 1), R1(2, 2), T1(2, 0));
 	if (unprojectPoints(K, Kinv, P1, P2, pts1, pts2, pts3d, error)) return error;
 
 	// 第2候補のチェック
@@ -201,19 +198,16 @@ bool Reconstruction::unprojectPoints(const Mat_<double>& K, const Mat_<double>& 
 
 		Mat_<double> X = iterativeTriangulation(u, P, u1, P1);
 
-		std::cout << "X:\n" << X << std::endl;
 		cv::Point3d p = cv::Point3d(X(0), X(1), X(2));
 		pts3d.push_back(p);
 		
 		// reprojection errorを計算する
 		cv::Mat_<double> pt1_3d_hat = K * Mat_<double>(P) * Mat_<double>(X);
 		Point2f pt1_hat(pt1_3d_hat(0, 0) / pt1_3d_hat(2, 0), pt1_3d_hat(1, 0) / pt1_3d_hat(2, 0));
-		std::cout << "projected point1: " << pt1_hat << " (observed: " << pts1[i] << ") E=" << norm(pt1_hat - pts1[i]) << std::endl;
 		errors.push_back(norm(pt1_hat - pts1[i]));
 
 		cv::Mat_<double> pt2_3d_hat = K * Mat_<double>(P1) * Mat_<double>(X);
 		Point2f pt2_hat(pt2_3d_hat(0, 0) / pt2_3d_hat(2, 0), pt2_3d_hat(1, 0) / pt2_3d_hat(2, 0));
-		std::cout << "projected point2: " << pt2_hat << " (observed: " << pts2[i] << ") E=" << norm(pt2_hat - pts1[i]) << std::endl;
 		errors.push_back(norm(pt2_hat - pts1[i]));
 
 		Mat_<double> x1 = P * X;
@@ -285,7 +279,6 @@ void Reconstruction::sampson(Mat_<double>& F, std::vector<Point2f>& pts1, std::v
 		Mat_<double> x2 = (Mat_<double>(3, 1) << pts2[i].x, pts2[i].y, 1);
 
 		Mat_<double> xFx = x2.t() * F * x1;
-		std::cout << xFx << std::endl;
 		double Fx1_1 = F(0, 0) * pts1[i].x + F(0, 1) * pts1[i].y + F(0, 2);
 		double Fx1_2 = F(1, 0) * pts1[i].x + F(1, 1) * pts1[i].y + F(1, 2);
 		double Fx2_1 = F(0, 0) * pts2[i].x + F(1, 0) * pts2[i].y + F(2, 0);

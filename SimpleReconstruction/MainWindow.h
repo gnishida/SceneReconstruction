@@ -20,6 +20,8 @@ public slots:
 	void onFeatureExtraction();
 	void onCalibration();
 	void onReconstruction();
+	void onRenderTexture();
+	void onRenderWireframe();
 };
 
 #endif // MAINWINDOW_H

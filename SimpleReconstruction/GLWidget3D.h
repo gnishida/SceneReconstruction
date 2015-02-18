@@ -16,9 +16,13 @@ class MainWindow;
 
 class GLWidget3D : public QGLWidget {
 private:
+	static enum { RENDERING_MODE_TEXTURE = 0, RENDERING_MODE_WIREFRAME };
+
+private:
 	MainWindow* mainWin;
 	Camera camera;
 	QPoint lastPos;
+	int renderingMode;
 
 	GLuint texCheckerBoard;
 	std::vector<cv::Mat> img;
@@ -37,6 +41,8 @@ public:
 	void reconstruct();
 	void calibrateCamera(std::vector<cv::Mat>& img);
 	int findPointIndex(std::vector<Point2f>& pts, Point2f& pt);
+	void renderTexture();
+	void renderWireframe();
 
 protected:
 	void initializeGL();

@@ -13,6 +13,8 @@ using namespace cv;
 GLWidget3D::GLWidget3D(MainWindow* mainWin) {
 	this->mainWin = mainWin;
 
+	this->renderingMode = RENDERING_MODE_TEXTURE;
+
 	// set up the camera
 	camera.setLookAt(0.0f, 0.0f, 0.0f);
 	camera.setYRotation(0);
@@ -154,39 +156,13 @@ void GLWidget3D::drawScene() {
 	glDisable(GL_TEXTURE_2D);
 
 	if (pts3d.size() > 0) {
-		/*
-		// 左側のボックスを描画
-		drawTriangle(0, 1, 2);
-		drawTriangle(0, 2, 3);
-		drawTriangle(0, 16, 17);
-		drawTriangle(0, 17, 1);
-		drawTriangle(1, 17, 18);
-		drawTriangle(1, 18, 2);
-		drawTriangle(4, 5, 6);
-		drawTriangle(4, 6, 19);
-		drawTriangle(19, 6, 7);
-		drawTriangle(19, 7, 8);
-		drawTriangle(5, 9, 10);
-		drawTriangle(5, 10, 6);
-		drawTriangle(6, 10, 11);
-		drawTriangle(6, 11, 7);
-
-		// 右側のテープを描画
-		drawTriangle(12, 13, 14);
-		drawTriangle(12, 14, 15);
-		drawTriangle(20, 12, 15);
-		drawTriangle(20, 15, 21);
-		drawTriangle(15, 14, 22);
-		drawTriangle(15, 22, 21);
-		*/
-		
 		Subdiv2D subdiv(Rect(0, 0, 3000, 3000));
 		for (int i = 0; i < pts3d.size(); ++i) {
 			subdiv.insert(Point2f(pts[0][i].x, pts[0][i].y));
 		}
 		std::vector<Vec6f> triangleList;
 		subdiv.getTriangleList(triangleList);
-		glBegin(GL_TRIANGLES);
+		
 		for (int i = 0; i < triangleList.size(); ++i) {
 			int edge = 0;
 			int vertex[3] = {0, 0, 0};
@@ -198,9 +174,7 @@ void GLWidget3D::drawScene() {
 			if (vertex[0] >= 0 && vertex[1] >= 0 && vertex[2] >= 0) {
 				drawTriangle(vertex[0], vertex[1], vertex[2]);
 			}
-		}
-		glEnd();
-		
+		}		
 	}
 }
 
@@ -225,27 +199,34 @@ QVector2D GLWidget3D::mouseTo2D(int x,int y) {
 }
 
 void GLWidget3D::drawTriangle(int index1, int index2, int index3) {
-	std::vector<Point2f> texCoord;
-	GLuint texture = generateTexture(index1, index2, index3, texCoord);
+	if (renderingMode == RENDERING_MODE_TEXTURE) {
+		std::vector<Point2f> texCoord;
+		GLuint texture = generateTexture(index1, index2, index3, texCoord);
 	
-	glEnable(GL_TEXTURE_2D);
-	glBindTexture(GL_TEXTURE_2D, texture);
+		glEnable(GL_TEXTURE_2D);
+		glBindTexture(GL_TEXTURE_2D, texture);
 	
-	glBegin(GL_TRIANGLES);
+		glColor3f(1, 1, 1);
+		glBegin(GL_TRIANGLES);
 
-	glColor3f(1, 1, 1);
-	glTexCoord2f(texCoord[0].x, texCoord[0].y);
-	glVertex3f(pts3d[index1].x, pts3d[index1].y, pts3d[index1].z);
+		glTexCoord2f(texCoord[0].x, texCoord[0].y);
+		glVertex3f(pts3d[index1].x, pts3d[index1].y, pts3d[index1].z);
 
-	glColor3f(1, 1, 1);
-	glTexCoord2f(texCoord[1].x, texCoord[1].y);
-	glVertex3f(pts3d[index2].x, pts3d[index2].y, pts3d[index2].z);
+		glTexCoord2f(texCoord[1].x, texCoord[1].y);
+		glVertex3f(pts3d[index2].x, pts3d[index2].y, pts3d[index2].z);
 
-	glColor3f(1, 1, 1);
-	glTexCoord2f(texCoord[2].x, texCoord[2].y);
-	glVertex3f(pts3d[index3].x, pts3d[index3].y, pts3d[index3].z);
+		glTexCoord2f(texCoord[2].x, texCoord[2].y);
+		glVertex3f(pts3d[index3].x, pts3d[index3].y, pts3d[index3].z);
 
-	glEnd();
+		glEnd();
+	} else {
+		glColor3f(1, 1, 1);
+		glBegin(GL_LINE_LOOP);
+		glVertex3f(pts3d[index1].x, pts3d[index1].y, pts3d[index1].z);
+		glVertex3f(pts3d[index2].x, pts3d[index2].y, pts3d[index2].z);
+		glVertex3f(pts3d[index3].x, pts3d[index3].y, pts3d[index3].z);
+		glEnd();
+	}
 }
 
 GLuint GLWidget3D::generateTexture(int index1, int index2, int index3, std::vector<Point2f>& texCoord) {
@@ -265,7 +246,6 @@ GLuint GLWidget3D::generateTexture(int index1, int index2, int index3, std::vect
 		// Z軸をc = a x bで求める。
 		// さらに、Y軸をb' = c x aで求める。
 		Mat_<double> a = (Mat_<double>(3, 1) << pts3d[index2].x - pts3d[index1].x, pts3d[index2].y - pts3d[index1].y, pts3d[index2].z - pts3d[index1].z);
-		std::cout << a << std::endl;
 		Mat_<double> b = (Mat_<double>(3, 1) << pts3d[index3].x - pts3d[index1].x, pts3d[index3].y - pts3d[index1].y, pts3d[index3].z - pts3d[index1].z);
 		Mat_<double> c = a.cross(b);
 		b = c.cross(a);
@@ -416,10 +396,6 @@ void GLWidget3D::reconstruct() {
 	Reconstruction reconstruction;
 	reconstruction.calibrateCamera(img, K, distCoeffs, P);
 
-	std::cout << K << std::endl;
-	std::cout << P[0] << std::endl;
-	std::cout << P[1] << std::endl;
-
 	// 対応点をファイルから読み込む
 	pts.resize(2);
 	pts[0].clear();
@@ -514,4 +490,14 @@ int GLWidget3D::findPointIndex(std::vector<Point2f>& pts, Point2f& pt) {
 	}
 
 	return index;
+}
+
+void GLWidget3D::renderTexture() {
+	renderingMode = RENDERING_MODE_TEXTURE;
+	updateGL();
+}
+
+void GLWidget3D::renderWireframe() {
+	renderingMode = RENDERING_MODE_WIREFRAME;
+	updateGL();
 }

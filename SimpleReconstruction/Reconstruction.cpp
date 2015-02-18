@@ -231,7 +231,6 @@ void Reconstruction::sampson(Mat_<double>& F, std::vector<Point2f>& pts1, std::v
 		Mat_<double> x2 = (Mat_<double>(3, 1) << pts2[i].x, pts2[i].y, 1);
 
 		Mat_<double> xFx = x2.t() * F * x1;
-		std::cout << xFx << std::endl;
 		double Fx1_1 = F(0, 0) * pts1[i].x + F(0, 1) * pts1[i].y + F(0, 2);
 		double Fx1_2 = F(1, 0) * pts1[i].x + F(1, 1) * pts1[i].y + F(1, 2);
 		double Fx2_1 = F(0, 0) * pts2[i].x + F(1, 0) * pts2[i].y + F(2, 0);

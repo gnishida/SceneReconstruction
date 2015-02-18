@@ -8,6 +8,10 @@ MainWindow::MainWindow(QWidget *parent, Qt::WFlags flags) : QMainWindow(parent, 
 	connect(ui.actionReconstruction, SIGNAL(triggered()), this, SLOT(onReconstruction()));
 	connect(ui.actionExit, SIGNAL(triggered()), this, SLOT(close()));
 
+	connect(ui.actionRenderTexture, SIGNAL(triggered()), this, SLOT(onRenderTexture()));
+	connect(ui.actionRenderWireframe, SIGNAL(triggered()), this, SLOT(onRenderWireframe()));
+
+
 	// setup the OpenGL widget
 	glWidget = new GLWidget3D(this);
 	setCentralWidget(glWidget);
@@ -41,4 +45,14 @@ void MainWindow::onCalibration() {
 
 void MainWindow::onReconstruction() {
 	glWidget->reconstruct();
+}
+
+void MainWindow::onRenderTexture() {
+	ui.actionRenderWireframe->setChecked(false);
+	glWidget->renderTexture();
+}
+
+void MainWindow::onRenderWireframe() {
+	ui.actionRenderTexture->setChecked(false);
+	glWidget->renderWireframe();
 }
