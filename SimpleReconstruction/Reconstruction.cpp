@@ -280,6 +280,9 @@ void Reconstruction::calibrateCamera(std::vector<Mat>& img, Mat_<double>& K, Mat
 	std::vector<Mat> rvecs;
 	std::vector<Mat> tvecs;
 
+	int corner_rows = 7;
+	int corner_cols = 10;
+
 	std::vector<std::vector<cv::Point3f> > objectPoints;
 	objectPoints.resize(img.size());
 
@@ -288,14 +291,14 @@ void Reconstruction::calibrateCamera(std::vector<Mat>& img, Mat_<double>& K, Mat
 
 	for (int i = 0; i < img.size(); ++i) {
 		// ３Ｄ座標のセット
-		for (int r = 0; r < 7; ++r) {
-			for (int c = 0; c < 10; ++c) {
+		for (int r = 0; r < corner_rows; ++r) {
+			for (int c = 0; c < corner_cols; ++c) {
 				objectPoints[i].push_back(cv::Point3f(c * 21.7, (6-r) * 21.7, 0.0f));
 			}
 		}
 
 		// コーナー検出
-		if (cv::findChessboardCorners(img[i], cv::Size(10, 7), pts[i])) {
+		if (cv::findChessboardCorners(img[i], cv::Size(corner_cols, corner_rows), pts[i])) {
 			fprintf (stderr, "ok\n");
 		} else {
 			fprintf (stderr, "fail\n");
