@@ -202,6 +202,9 @@ void GLWidget3D::drawTriangle(int index1, int index2, int index3) {
 	
 	glBegin(GL_TRIANGLES);
 
+	cv::Point3d normal = (pts3d[index2] - pts3d[index1]).cross(pts3d[index3] - pts3d[index1]);
+	glNormal3f(normal.x, normal.y, normal.z);
+
 	glColor3f(1, 1, 1);
 	glTexCoord2f(texCoord[0].x, texCoord[0].y);
 	glVertex3f(pts3d[index1].x, pts3d[index1].y, pts3d[index1].z);
